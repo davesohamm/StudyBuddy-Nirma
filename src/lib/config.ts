@@ -1,26 +1,64 @@
 // Configuration settings for the application
 export const config = {
-  // MongoDB Connection
+  // MongoDB Connection - Updated connection string
   mongodb: {
-    uri: process.env.MONGODB_URI || 'mongodb+srv://davesohamm:ajRr8qBUeBQ9TNXf@cluster0.egfl0bg.mongodb.net/nirma-studybuddy?retryWrites=true&w=majority&appName=Cluster0',
-    dbName: 'nirma-studybuddy'
+    uri: process.env.MONGODB_URI || 'mongodb+srv://davesohamm:<db_password>@cluster0.egfl0bg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
+    dbName: 'nirma-studybuddy-v2',
+    collections: {
+      users: 'users',
+      courses: 'courses',
+      assignments: 'assignments',
+      events: 'events',
+      materials: 'study_materials',
+      grades: 'grades',
+      notifications: 'notifications',
+      sessions: 'user_sessions'
+    }
   },
   
-  // JWT Configuration
+  // JWT Configuration - Enhanced security
   jwt: {
-    secret: process.env.JWT_SECRET || 'nirma_studybuddy_jwt_secret_key_2024_secure_random_string',
-    expiresIn: '7d'
+    secret: process.env.JWT_SECRET || 'nirma_studybuddy_jwt_secret_2024_v2_ultra_secure_key',
+    expiresIn: '30d', // 30 days for better UX
+    refreshExpiresIn: '90d' // 90 days for refresh tokens
   },
   
   // App Configuration
   app: {
-    name: 'Nirma StudyBuddy Portal',
+    name: 'Nirma StudyBuddy Portal v2.0',
+    version: '2.0.0',
     environment: process.env.NODE_ENV || 'development',
     url: process.env.NEXTAUTH_URL || 'http://localhost:3004'
   },
   
-  // Security
-  bcrypt: {
-    saltRounds: 12
+  // Security Configuration
+  security: {
+    bcrypt: {
+      saltRounds: 12
+    },
+    rateLimiting: {
+      auth: {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxAttempts: 5
+      },
+      api: {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        maxRequests: 100
+      }
+    }
+  },
+
+  // Database validation rules
+  validation: {
+    password: {
+      minLength: 8,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumbers: true,
+      requireSpecialChars: false
+    },
+    email: {
+      domains: ['nirma.edu', 'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'] // Add more as needed
+    }
   }
 }; 

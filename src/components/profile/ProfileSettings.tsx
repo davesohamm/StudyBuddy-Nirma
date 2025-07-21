@@ -18,76 +18,30 @@ import {
   Plus,
   Trash2,
   Camera,
-  Link
+  Link,
+  ArrowLeft,
+  Home,
+  CheckCircle,
+  Loader2
 } from 'lucide-react';
-
-interface ProfileData {
-  _id: string;
-  name: string;
-  email: string;
-  profile: {
-    firstName?: string;
-    lastName?: string;
-    studentId?: string;
-    profileImage?: string;
-    bio?: string;
-    phone?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    zipCode?: string;
-    semester?: number;
-    program?: string;
-    department?: string;
-    enrollmentYear?: number;
-    graduationYear?: number;
-    cgpa?: number;
-    dateOfBirth?: string;
-    gender?: string;
-    nationality?: string;
-    socialLinks?: {
-      linkedin?: string;
-      github?: string;
-      twitter?: string;
-      instagram?: string;
-      website?: string;
-    };
-    interests?: string[];
-    skills?: string[];
-    languages?: string[];
-    emergencyContact?: {
-      name?: string;
-      relationship?: string;
-      phone?: string;
-      email?: string;
-    };
-    customFields?: { fieldName: string; fieldValue: string; }[];
-  };
-  settings: {
-    notifications: boolean;
-    emailNotifications: boolean;
-    smsNotifications: boolean;
-    theme: 'light' | 'dark';
-    language: string;
-    timezone: string;
-    privacy: {
-      profileVisibility: 'public' | 'private' | 'friends';
-      showEmail: boolean;
-      showPhone: boolean;
-      showAddress: boolean;
-    };
-  };
-}
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { initializeProfile, validateProfileData, type ProfileData } from '@/lib/profile-utils';
 
 export default function ProfileSettings() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
   const [editMode, setEditMode] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [success, setSuccess] = useState<string>('');
+  
+  // Individual section saving states
+  const [sectionSaving, setSectionSaving] = useState<{[key: string]: boolean}>({});
+  const [sectionSuccess, setSectionSuccess] = useState<{[key: string]: boolean}>({});
+  const [sectionErrors, setSectionErrors] = useState<{[key: string]: string}>({});
 
   const tabs = [
     { id: 'personal', label: 'Personal Info', icon: User },
@@ -105,56 +59,130 @@ export default function ProfileSettings() {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('token');
+      console.log('🔍 ProfileSettings - Token exists:', !!token);
+      
+      if (!token) {
+        console.log('❌ ProfileSettings - No token found');
+        setErrors(['Authentication required. Please log in again.']);
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔍 ProfileSettings - Making API call...');
       const response = await fetch('/api/profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
       });
 
+      console.log('🔍 ProfileSettings - Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
-        setProfileData(data.user);
+        console.log('✅ ProfileSettings - Profile data loaded:', !!data.user);
+        console.log('📄 ProfileSettings - Actual profile data:', data.user);
+        
+        if (validateProfileData(data.user)) {
+          setProfileData(data.user);
+          setErrors([]); // Clear any previous errors
+          console.log('✅ ProfileSettings - Profile data set successfully');
+        } else {
+          console.log('⚠️ ProfileSettings - Invalid profile data, using fallback');
+          setProfileData(initializeProfile(user));
+          setErrors([]); // Clear any previous errors when using fallback
+        }
       } else {
-        setErrors(['Failed to load profile data']);
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.log('❌ ProfileSettings - API error:', errorData);
+        
+        if (response.status === 401) {
+          setErrors(['Session expired. Please log in again.']);
+          // Clear invalid token
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        } else {
+          // Use fallback data from AuthContext if API fails
+          if (user) {
+            console.log('⚠️ ProfileSettings - Using fallback data from AuthContext');
+            setProfileData(initializeProfile(user));
+            setErrors([]); // Don't show errors if we have fallback data working
+          } else {
+            setErrors([errorData.error || 'Failed to load profile data']);
+          }
+        }
       }
     } catch (error) {
-      setErrors(['Error loading profile']);
+      console.error('❌ ProfileSettings - Network error:', error);
+      
+      // Use fallback data from AuthContext if network fails
+      if (user) {
+        console.log('⚠️ ProfileSettings - Network error, using fallback data from AuthContext');
+        setProfileData(initializeProfile(user));
+        setErrors([]); // Don't show errors if we have fallback data
+      } else {
+        setErrors(['Network error. Please check your connection and try again.']);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSave = async () => {
+  // Individual section save function
+  const handleSectionSave = async (section: string, sectionData: any) => {
     if (!profileData) return;
 
-    setSaving(true);
-    setErrors([]);
-    setSuccess('');
+    setSectionSaving(prev => ({ ...prev, [section]: true }));
+    setSectionErrors(prev => ({ ...prev, [section]: '' }));
+    setSectionSuccess(prev => ({ ...prev, [section]: false }));
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/profile', {
+      const updateData = {
+        section,
+        data: sectionData
+      };
+
+      const response = await fetch('/api/profile/section', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(profileData),
+        body: JSON.stringify(updateData),
       });
 
       if (response.ok) {
-        setSuccess('Profile updated successfully!');
-        setEditMode(false);
-        // Update local storage
-        localStorage.setItem('user', JSON.stringify(profileData));
+        const responseData = await response.json();
+        setSectionSuccess(prev => ({ ...prev, [section]: true }));
+        
+        // Update local profile data with the returned data from the server
+        if (responseData.user) {
+          setProfileData(responseData.user);
+          
+          // Also update localStorage to persist the data
+          localStorage.setItem('user', JSON.stringify(responseData.user));
+        }
+
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSectionSuccess(prev => ({ ...prev, [section]: false }));
+        }, 3000);
+
       } else {
         const data = await response.json();
-        setErrors([data.error || 'Failed to update profile']);
+        setSectionErrors(prev => ({ 
+          ...prev, 
+          [section]: data.error || `Failed to update ${section} section` 
+        }));
       }
     } catch (error) {
-      setErrors(['Error updating profile']);
+      setSectionErrors(prev => ({ 
+        ...prev, 
+        [section]: `Error updating ${section} section` 
+      }));
     } finally {
-      setSaving(false);
+      setSectionSaving(prev => ({ ...prev, [section]: false }));
     }
   };
 
@@ -188,6 +216,50 @@ export default function ProfileSettings() {
     updateProfile('profile.customFields', newCustomFields);
   };
 
+  // Section save buttons component
+  const SectionSaveButton = ({ section, getData }: { section: string, getData: () => any }) => (
+    <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end">
+      <motion.button
+        onClick={() => handleSectionSave(section, getData())}
+        disabled={sectionSaving[section]}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className={`flex items-center px-6 py-2 rounded-lg font-medium transition-all ${
+          sectionSuccess[section]
+            ? 'bg-green-500 text-white'
+            : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
+        } disabled:opacity-50 disabled:cursor-not-allowed shadow-md`}
+      >
+        {sectionSaving[section] ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Saving...
+          </>
+        ) : sectionSuccess[section] ? (
+          <>
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Saved!
+          </>
+        ) : (
+          <>
+            <Save className="w-4 h-4 mr-2" />
+            Save {section.charAt(0).toUpperCase() + section.slice(1)}
+          </>
+        )}
+      </motion.button>
+      
+      {sectionErrors[section] && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-2 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md"
+        >
+          {sectionErrors[section]}
+        </motion.div>
+      )}
+    </div>
+  );
+
   const renderPersonalTab = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -197,8 +269,7 @@ export default function ProfileSettings() {
             type="text"
             value={profileData?.profile.firstName || ''}
             onChange={(e) => updateProfile('profile.firstName', e.target.value)}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         
@@ -208,8 +279,7 @@ export default function ProfileSettings() {
             type="text"
             value={profileData?.profile.lastName || ''}
             onChange={(e) => updateProfile('profile.lastName', e.target.value)}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
       </div>
@@ -220,9 +290,8 @@ export default function ProfileSettings() {
           rows={4}
           value={profileData?.profile.bio || ''}
           onChange={(e) => updateProfile('profile.bio', e.target.value)}
-          disabled={!editMode}
           maxLength={500}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Tell us about yourself..."
         />
         <p className="text-xs text-gray-500 mt-1">{profileData?.profile.bio?.length || 0}/500 characters</p>
@@ -235,8 +304,7 @@ export default function ProfileSettings() {
             type="date"
             value={profileData?.profile.dateOfBirth || ''}
             onChange={(e) => updateProfile('profile.dateOfBirth', e.target.value)}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         
@@ -245,8 +313,7 @@ export default function ProfileSettings() {
           <select
             value={profileData?.profile.gender || ''}
             onChange={(e) => updateProfile('profile.gender', e.target.value)}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select Gender</option>
             <option value="male">Male</option>
@@ -263,10 +330,24 @@ export default function ProfileSettings() {
           type="text"
           value={profileData?.profile.nationality || ''}
           onChange={(e) => updateProfile('profile.nationality', e.target.value)}
-          disabled={!editMode}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
+
+      <SectionSaveButton 
+        section="personal" 
+        getData={() => ({
+          profile: {
+            ...profileData?.profile,
+            firstName: profileData?.profile.firstName,
+            lastName: profileData?.profile.lastName,
+            bio: profileData?.profile.bio,
+            dateOfBirth: profileData?.profile.dateOfBirth,
+            gender: profileData?.profile.gender,
+            nationality: profileData?.profile.nationality
+          }
+        })}
+      />
     </div>
   );
 
@@ -277,20 +358,18 @@ export default function ProfileSettings() {
           <label className="block text-sm font-medium text-gray-700 mb-2">Student ID</label>
           <input
             type="text"
-            value={profileData?.profile.studentId || ''}
-            onChange={(e) => updateProfile('profile.studentId', e.target.value)}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            value={profileData?.profile.academic?.studentId || ''}
+            onChange={(e) => updateProfile('profile.academic.studentId', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Current Semester</label>
           <select
-            value={profileData?.profile.semester || 1}
-            onChange={(e) => updateProfile('profile.semester', parseInt(e.target.value))}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            value={profileData?.profile.academic?.semester || 1}
+            onChange={(e) => updateProfile('profile.academic.semester', parseInt(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value={1}>1st Semester</option>
             <option value={2}>2nd Semester</option>
@@ -304,10 +383,9 @@ export default function ProfileSettings() {
         <label className="block text-sm font-medium text-gray-700 mb-2">Program</label>
         <input
           type="text"
-          value={profileData?.profile.program || ''}
-          onChange={(e) => updateProfile('profile.program', e.target.value)}
-          disabled={!editMode}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          value={profileData?.profile.academic?.program || ''}
+          onChange={(e) => updateProfile('profile.academic.program', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
@@ -318,23 +396,19 @@ export default function ProfileSettings() {
             type="number"
             min="2020"
             max="2030"
-            value={profileData?.profile.enrollmentYear || ''}
-            onChange={(e) => updateProfile('profile.enrollmentYear', parseInt(e.target.value))}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            value={profileData?.profile.academic?.enrollmentYear || ''}
+            onChange={(e) => updateProfile('profile.academic.enrollmentYear', parseInt(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Expected Graduation</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
           <input
-            type="number"
-            min="2022"
-            max="2035"
-            value={profileData?.profile.graduationYear || ''}
-            onChange={(e) => updateProfile('profile.graduationYear', parseInt(e.target.value))}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            type="text"
+            value={profileData?.profile.academic?.department || ''}
+            onChange={(e) => updateProfile('profile.academic.department', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
       </div>
@@ -346,12 +420,21 @@ export default function ProfileSettings() {
           step="0.01"
           min="0"
           max="10"
-          value={profileData?.profile.cgpa || ''}
-          onChange={(e) => updateProfile('profile.cgpa', parseFloat(e.target.value))}
-          disabled={!editMode}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          value={profileData?.profile.academic?.cgpa || ''}
+          onChange={(e) => updateProfile('profile.academic.cgpa', parseFloat(e.target.value))}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
+
+      <SectionSaveButton 
+        section="academic" 
+        getData={() => ({
+          profile: {
+            ...profileData?.profile,
+            academic: profileData?.profile.academic
+          }
+        })}
+      />
     </div>
   );
 
@@ -364,8 +447,7 @@ export default function ProfileSettings() {
             type="tel"
             value={profileData?.profile.phone || ''}
             onChange={(e) => updateProfile('profile.phone', e.target.value)}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         
@@ -373,22 +455,20 @@ export default function ProfileSettings() {
           <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
           <input
             type="text"
-            value={profileData?.profile.city || ''}
-            onChange={(e) => updateProfile('profile.city', e.target.value)}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            value={profileData?.profile.address?.city || ''}
+            onChange={(e) => updateProfile('profile.address.city', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
         <textarea
           rows={3}
-          value={profileData?.profile.address || ''}
-          onChange={(e) => updateProfile('profile.address', e.target.value)}
-          disabled={!editMode}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          value={profileData?.profile.address?.street || ''}
+          onChange={(e) => updateProfile('profile.address.street', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
@@ -397,10 +477,9 @@ export default function ProfileSettings() {
           <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
           <input
             type="text"
-            value={profileData?.profile.state || ''}
-            onChange={(e) => updateProfile('profile.state', e.target.value)}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            value={profileData?.profile.address?.state || ''}
+            onChange={(e) => updateProfile('profile.address.state', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         
@@ -408,13 +487,33 @@ export default function ProfileSettings() {
           <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code</label>
           <input
             type="text"
-            value={profileData?.profile.zipCode || ''}
-            onChange={(e) => updateProfile('profile.zipCode', e.target.value)}
-            disabled={!editMode}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+            value={profileData?.profile.address?.zipCode || ''}
+            onChange={(e) => updateProfile('profile.address.zipCode', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
       </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+        <input
+          type="text"
+          value={profileData?.profile.address?.country || ''}
+          onChange={(e) => updateProfile('profile.address.country', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+
+      <SectionSaveButton 
+        section="contact" 
+        getData={() => ({
+          profile: {
+            ...profileData?.profile,
+            phone: profileData?.profile.phone,
+            address: profileData?.profile.address
+          }
+        })}
+      />
     </div>
   );
 
@@ -426,9 +525,8 @@ export default function ProfileSettings() {
           type="text"
           value={profileData?.profile.interests?.join(', ') || ''}
           onChange={(e) => updateProfile('profile.interests', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
-          disabled={!editMode}
           placeholder="Machine Learning, Web Development, AI (comma-separated)"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
@@ -438,9 +536,8 @@ export default function ProfileSettings() {
           type="text"
           value={profileData?.profile.skills?.join(', ') || ''}
           onChange={(e) => updateProfile('profile.skills', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
-          disabled={!editMode}
           placeholder="Python, JavaScript, React (comma-separated)"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
@@ -450,64 +547,34 @@ export default function ProfileSettings() {
           type="text"
           value={profileData?.profile.languages?.join(', ') || ''}
           onChange={(e) => updateProfile('profile.languages', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
-          disabled={!editMode}
           placeholder="English, Hindi, Spanish (comma-separated)"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
-      {/* Custom Fields */}
       <div>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Custom Fields</h3>
-          {editMode && (
-            <button
-              onClick={addCustomField}
-              className="flex items-center px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add Field
-            </button>
-          )}
-        </div>
-        
-        {profileData?.profile.customFields?.map((field, index) => (
-          <div key={index} className="flex gap-4 mb-3">
-            <input
-              type="text"
-              placeholder="Field Name"
-              value={field.fieldName}
-              onChange={(e) => {
-                const newFields = [...(profileData.profile.customFields || [])];
-                newFields[index].fieldName = e.target.value;
-                updateProfile('profile.customFields', newFields);
-              }}
-              disabled={!editMode}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-            />
-            <input
-              type="text"
-              placeholder="Field Value"
-              value={field.fieldValue}
-              onChange={(e) => {
-                const newFields = [...(profileData.profile.customFields || [])];
-                newFields[index].fieldValue = e.target.value;
-                updateProfile('profile.customFields', newFields);
-              }}
-              disabled={!editMode}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-            />
-            {editMode && (
-              <button
-                onClick={() => removeCustomField(index)}
-                className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        ))}
+        <label className="block text-sm font-medium text-gray-700 mb-2">Achievements</label>
+        <textarea
+          rows={4}
+          value={profileData?.profile.achievements?.join('\n') || ''}
+          onChange={(e) => updateProfile('profile.achievements', e.target.value.split('\n').filter(s => s.trim()))}
+          placeholder="List your achievements (one per line)"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
       </div>
+
+      <SectionSaveButton 
+        section="interests" 
+        getData={() => ({
+          profile: {
+            ...profileData?.profile,
+            interests: profileData?.profile.interests,
+            skills: profileData?.profile.skills,
+            languages: profileData?.profile.languages,
+            achievements: profileData?.profile.achievements
+          }
+        })}
+      />
     </div>
   );
 
@@ -519,9 +586,8 @@ export default function ProfileSettings() {
           type="url"
           value={profileData?.profile.socialLinks?.linkedin || ''}
           onChange={(e) => updateProfile('profile.socialLinks.linkedin', e.target.value)}
-          disabled={!editMode}
           placeholder="https://linkedin.com/in/yourprofile"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
@@ -531,9 +597,8 @@ export default function ProfileSettings() {
           type="url"
           value={profileData?.profile.socialLinks?.github || ''}
           onChange={(e) => updateProfile('profile.socialLinks.github', e.target.value)}
-          disabled={!editMode}
           placeholder="https://github.com/yourusername"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
@@ -543,35 +608,31 @@ export default function ProfileSettings() {
           type="url"
           value={profileData?.profile.socialLinks?.twitter || ''}
           onChange={(e) => updateProfile('profile.socialLinks.twitter', e.target.value)}
-          disabled={!editMode}
           placeholder="https://twitter.com/yourusername"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio Website</label>
         <input
           type="url"
-          value={profileData?.profile.socialLinks?.instagram || ''}
-          onChange={(e) => updateProfile('profile.socialLinks.instagram', e.target.value)}
-          disabled={!editMode}
-          placeholder="https://instagram.com/yourusername"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Personal Website</label>
-        <input
-          type="url"
-          value={profileData?.profile.socialLinks?.website || ''}
-          onChange={(e) => updateProfile('profile.socialLinks.website', e.target.value)}
-          disabled={!editMode}
+          value={profileData?.profile.socialLinks?.portfolio || ''}
+          onChange={(e) => updateProfile('profile.socialLinks.portfolio', e.target.value)}
           placeholder="https://yourwebsite.com"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
+
+      <SectionSaveButton 
+        section="social" 
+        getData={() => ({
+          profile: {
+            ...profileData?.profile,
+            socialLinks: profileData?.profile.socialLinks
+          }
+        })}
+      />
     </div>
   );
 
@@ -583,29 +644,27 @@ export default function ProfileSettings() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <label className="text-sm font-medium text-gray-700">General Notifications</label>
-              <p className="text-sm text-gray-500">Receive general app notifications</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={profileData?.settings.notifications || false}
-              onChange={(e) => updateProfile('settings.notifications', e.target.checked)}
-              disabled={!editMode}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
               <label className="text-sm font-medium text-gray-700">Email Notifications</label>
               <p className="text-sm text-gray-500">Receive notifications via email</p>
             </div>
             <input
               type="checkbox"
-              checked={profileData?.settings.emailNotifications || false}
-              onChange={(e) => updateProfile('settings.emailNotifications', e.target.checked)}
-              disabled={!editMode}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
+              checked={profileData?.preferences?.notifications?.email || false}
+              onChange={(e) => updateProfile('preferences.notifications.email', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Push Notifications</label>
+              <p className="text-sm text-gray-500">Receive push notifications</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={profileData?.preferences?.notifications?.push || false}
+              onChange={(e) => updateProfile('preferences.notifications.push', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
           </div>
 
@@ -616,60 +675,10 @@ export default function ProfileSettings() {
             </div>
             <input
               type="checkbox"
-              checked={profileData?.settings.smsNotifications || false}
-              onChange={(e) => updateProfile('settings.smsNotifications', e.target.checked)}
-              disabled={!editMode}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
+              checked={profileData?.preferences?.notifications?.sms || false}
+              onChange={(e) => updateProfile('preferences.notifications.sms', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
-          </div>
-        </div>
-      </div>
-
-      {/* Theme Settings */}
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Appearance</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
-            <select
-              value={profileData?.settings.theme || 'light'}
-              onChange={(e) => updateProfile('settings.theme', e.target.value)}
-              disabled={!editMode}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
-            <select
-              value={profileData?.settings.language || 'en'}
-              onChange={(e) => updateProfile('settings.language', e.target.value)}
-              disabled={!editMode}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-            >
-              <option value="en">English</option>
-              <option value="hi">Hindi</option>
-              <option value="gu">Gujarati</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
-            <select
-              value={profileData?.settings.timezone || 'UTC'}
-              onChange={(e) => updateProfile('settings.timezone', e.target.value)}
-              disabled={!editMode}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
-            >
-              <option value="UTC">UTC</option>
-              <option value="Asia/Kolkata">India Standard Time</option>
-              <option value="America/New_York">Eastern Time</option>
-              <option value="America/Los_Angeles">Pacific Time</option>
-              <option value="Europe/London">Greenwich Mean Time</option>
-            </select>
           </div>
         </div>
       </div>
@@ -681,10 +690,9 @@ export default function ProfileSettings() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Profile Visibility</label>
             <select
-              value={profileData?.settings.privacy?.profileVisibility || 'public'}
-              onChange={(e) => updateProfile('settings.privacy.profileVisibility', e.target.value)}
-              disabled={!editMode}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+              value={profileData?.preferences?.privacy?.profileVisibility || 'public'}
+              onChange={(e) => updateProfile('preferences.privacy.profileVisibility', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="public">Public</option>
               <option value="friends">Friends Only</option>
@@ -699,10 +707,9 @@ export default function ProfileSettings() {
             </div>
             <input
               type="checkbox"
-              checked={profileData?.settings.privacy?.showEmail || false}
-              onChange={(e) => updateProfile('settings.privacy.showEmail', e.target.checked)}
-              disabled={!editMode}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
+              checked={profileData?.preferences?.privacy?.showEmail || false}
+              onChange={(e) => updateProfile('preferences.privacy.showEmail', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
           </div>
 
@@ -713,35 +720,27 @@ export default function ProfileSettings() {
             </div>
             <input
               type="checkbox"
-              checked={profileData?.settings.privacy?.showPhone || false}
-              onChange={(e) => updateProfile('settings.privacy.showPhone', e.target.checked)}
-              disabled={!editMode}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Show Address</label>
-              <p className="text-sm text-gray-500">Display address on public profile</p>
-            </div>
-            <input
-              type="checkbox"
-              checked={profileData?.settings.privacy?.showAddress || false}
-              onChange={(e) => updateProfile('settings.privacy.showAddress', e.target.checked)}
-              disabled={!editMode}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
+              checked={profileData?.preferences?.privacy?.showPhone || false}
+              onChange={(e) => updateProfile('preferences.privacy.showPhone', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
           </div>
         </div>
       </div>
+
+      <SectionSaveButton 
+        section="settings" 
+        getData={() => ({
+          preferences: profileData?.preferences
+        })}
+      />
     </div>
   );
 
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -750,45 +749,42 @@ export default function ProfileSettings() {
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-sm">
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center">
+          {/* Back Navigation */}
+          <div className="flex gap-2 mr-6">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              title="Go back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+              <button
+              onClick={() => router.push('/')}
+              className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              title="Go to dashboard"
+            >
+              <Home className="w-5 h-5" />
+              </button>
+          </div>
+          
+          {/* Title */}
         <div>
+            {/* Breadcrumb */}
+            <nav className="flex items-center text-sm text-gray-500 mb-2">
+              <button
+                onClick={() => router.push('/')}
+                className="hover:text-gray-700 transition-colors"
+              >
+                Dashboard
+              </button>
+              <span className="mx-2">/</span>
+              <span className="text-gray-900">Profile Settings</span>
+            </nav>
+            
           <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
           <p className="text-gray-600 mt-2">Manage your personal information and preferences</p>
-        </div>
-        
-        <div className="flex gap-3">
-          {!editMode ? (
-            <button
-              onClick={() => setEditMode(true)}
-              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Profile
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={() => {
-                  setEditMode(false);
-                  fetchProfile(); // Reset changes
-                }}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-              >
-                {saving ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-                Save Changes
-              </button>
-            </>
-          )}
+          </div>
         </div>
       </div>
 
@@ -818,12 +814,15 @@ export default function ProfileSettings() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'border-indigo-500 text-indigo-600'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
               <tab.icon className="w-4 h-4 mr-2" />
               {tab.label}
+              {sectionSuccess[tab.id] && (
+                <CheckCircle className="w-4 h-4 ml-2 text-green-500" />
+              )}
             </button>
           ))}
         </nav>

@@ -2,32 +2,17 @@
 
 import { GraduationCap, Bell, User, Search, LogOut, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { motion } from 'framer-motion';
 
 export default function Header() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      router.push('/search');
-    }
-  };
 
   const handleSearchClick = () => {
     router.push('/search');
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearchSubmit(e as any);
-    }
   };
 
   const handleLogout = () => {
@@ -35,6 +20,20 @@ export default function Header() {
     setShowUserMenu(false);
     router.push('/auth');
   };
+
+  // Keyboard shortcut for search (Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        handleSearchClick();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -50,20 +49,30 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Button */}
           <div className="flex-1 max-w-lg mx-8">
-            <form onSubmit={handleSearchSubmit} className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                onClick={handleSearchClick}
-                placeholder="Search courses, topics, experiments, algorithms..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
-              />
-            </form>
+            <motion.button
+              onClick={handleSearchClick}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full flex items-center px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-blue-50 hover:to-purple-50 border border-gray-200 hover:border-blue-300 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md group relative overflow-hidden"
+            >
+              {/* Subtle shimmer effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-pulse transition-opacity duration-500"></div>
+              
+              <Search className="h-5 w-5 text-gray-400 group-hover:text-blue-500 transition-colors mr-3 relative z-10" />
+              <span className="text-gray-500 group-hover:text-gray-700 font-medium flex-1 text-left relative z-10">
+                Search courses, topics, experiments, algorithms...
+              </span>
+              <div className="hidden sm:flex items-center gap-1 ml-2 relative z-10">
+                <kbd className="px-2 py-1 text-xs text-gray-400 bg-white border border-gray-200 rounded shadow-sm group-hover:border-blue-200 group-hover:text-blue-500 transition-colors">
+                  Ctrl
+                </kbd>
+                <kbd className="px-2 py-1 text-xs text-gray-400 bg-white border border-gray-200 rounded shadow-sm group-hover:border-blue-200 group-hover:text-blue-500 transition-colors">
+                  K
+                </kbd>
+              </div>
+            </motion.button>
           </div>
 
           {/* Right side actions */}

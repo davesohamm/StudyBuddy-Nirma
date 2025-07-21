@@ -25,9 +25,20 @@ export async function connectDB() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      family: 4, // Use IPv4, skip trying IPv6
+      dbName: config.mongodb.dbName
     };
 
+    console.log('🔄 Connecting to MongoDB...', {
+      dbName: config.mongodb.dbName,
+      environment: config.app.environment
+    });
+
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      console.log('✅ MongoDB connected successfully');
       return mongoose;
     });
   }
@@ -36,10 +47,31 @@ export async function connectDB() {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
+    console.error('❌ MongoDB connection failed:', e);
     throw e;
   }
 
   return cached.conn;
+}
+
+// Get database connection status
+export function getConnectionStatus() {
+  return {
+    isConnected: mongoose.connection.readyState === 1,
+    readyState: mongoose.connection.readyState,
+    host: mongoose.connection.host,
+    name: mongoose.connection.name
+  };
+}
+
+// Close database connection
+export async function disconnectDB() {
+  if (cached.conn) {
+    await mongoose.connection.close();
+    cached.conn = null;
+    cached.promise = null;
+    console.log('🔒 MongoDB disconnected');
+  }
 }
 
 export default connectDB; 

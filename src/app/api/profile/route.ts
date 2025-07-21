@@ -1,123 +1,99 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth-real';
-import { getAllMockUsers, logMockOperation } from '@/lib/mock-storage';
-
-async function tryConnectDB() {
-  try {
-    const { default: connectDB } = await import('@/lib/mongodb');
-    await connectDB();
-    return true;
-  } catch (error) {
-    console.warn('MongoDB connection failed, using mock storage:', error);
-    return false;
-  }
-}
-
-async function tryGetUserModel() {
-  try {
-    const { User } = await import('@/models/User');
-    return User;
-  } catch (error) {
-    console.warn('User model failed to load:', error);
-    return null;
-  }
-}
+import { authenticateRequest } from '@/lib/auth';
+import { connectDB } from '@/lib/mongodb';
+import { User } from '@/models/User';
 
 // GET /api/profile - Get user profile
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
+    console.log('🔍 Profile API - Starting profile fetch...');
+
+    // Authenticate request
+    const authResult = authenticateRequest(request);
+    if (!authResult.success || !authResult.user) {
+      console.log('❌ Profile API - Authentication failed');
       return NextResponse.json(
-        { error: 'Authorization token required' },
+        { 
+          error: 'Authentication required',
+          code: 'UNAUTHORIZED'
+        },
         { status: 401 }
       );
     }
 
-    // Verify token
-    const payload = verifyToken(token);
-    if (!payload) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
+    console.log('✅ Profile API - User authenticated:', authResult.user.userId);
 
-    // Try MongoDB first, fall back to mock storage
-    const canUseMongoDB = await tryConnectDB();
-    const User = await tryGetUserModel();
+    // Connect to MongoDB
+    console.log('🔄 Profile API - Connecting to MongoDB...');
+    await connectDB();
+    console.log('✅ Profile API - MongoDB connected');
 
-    if (canUseMongoDB && User) {
-      try {
-        const user = await User.findById(payload.userId);
-        if (!user) {
-          return NextResponse.json(
-            { error: 'User not found' },
-            { status: 404 }
-          );
-        }
-
-        return NextResponse.json({
-          success: true,
-          user: {
-            _id: user._id.toString(),
-            name: user.name,
-            email: user.email,
-            profile: user.profile,
-            settings: user.settings,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt
-          }
-        });
-      } catch (dbError) {
-        console.error('MongoDB operation failed, falling back to mock storage:', dbError);
-      }
-    }
-
-    // Use mock storage (fallback)
-    const mockUsers = getAllMockUsers();
-    const user = mockUsers.find(u => u._id === payload.userId);
+    // Find user by ID
+    console.log('🔍 Profile API - Finding user...');
+    const user = await User.findById(authResult.user.userId);
     
     if (!user) {
+      console.log('❌ Profile API - User not found');
       return NextResponse.json(
-        { error: 'User not found' },
+        { 
+          error: 'User not found',
+          code: 'USER_NOT_FOUND'
+        },
         { status: 404 }
       );
     }
 
-    logMockOperation('Profile Fetch', user.email);
+    console.log('✅ Profile API - User found:', user.email);
+
+    // Return user profile data
+    const profileData = {
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      isActive: user.isActive,
+      profile: {
+        firstName: user.profile.firstName,
+        lastName: user.profile.lastName,
+        avatar: user.profile.avatar,
+        bio: user.profile.bio,
+        phone: user.profile.phone,
+        address: user.profile.address,
+        academic: user.profile.academic,
+        professional: user.profile.professional,
+        dateOfBirth: user.profile.dateOfBirth,
+        gender: user.profile.gender,
+        nationality: user.profile.nationality,
+        languages: user.profile.languages,
+        skills: user.profile.skills,
+        interests: user.profile.interests,
+        achievements: user.profile.achievements,
+        socialLinks: user.profile.socialLinks,
+        emergencyContact: user.profile.emergencyContact
+      },
+      preferences: user.preferences,
+      lastLogin: user.lastLogin,
+      lastActivity: user.lastActivity,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+
+    console.log('🎉 Profile API - Profile data prepared successfully');
 
     return NextResponse.json({
       success: true,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        profile: user.profile || {},
-        settings: user.settings || {
-          notifications: true,
-          emailNotifications: true,
-          smsNotifications: false,
-          theme: 'light',
-          language: 'en',
-          timezone: 'UTC',
-          privacy: {
-            profileVisibility: 'public',
-            showEmail: false,
-            showPhone: false,
-            showAddress: false
-          }
-        },
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt || user.createdAt
-      }
+      user: profileData
     });
 
   } catch (error) {
-    console.error('Profile fetch error:', error);
+    console.error('💥 Profile API - Error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
@@ -126,184 +102,137 @@ export async function GET(request: NextRequest) {
 // PUT /api/profile - Update user profile
 export async function PUT(request: NextRequest) {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
+    console.log('🔄 Profile API - Starting profile update...');
+
+    // Authenticate request
+    const authResult = authenticateRequest(request);
+    if (!authResult.success || !authResult.user) {
+      console.log('❌ Profile API - Authentication failed');
       return NextResponse.json(
-        { error: 'Authorization token required' },
+        { 
+          error: 'Authentication required',
+          code: 'UNAUTHORIZED'
+        },
         { status: 401 }
       );
     }
 
-    // Verify token
-    const payload = verifyToken(token);
-    if (!payload) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
+    console.log('✅ Profile API - User authenticated:', authResult.user.userId);
 
+    // Parse request body
     const updateData = await request.json();
+    console.log('📝 Profile API - Update data received');
 
-    // Validate required fields
-    if (!updateData.name || !updateData.email) {
-      return NextResponse.json(
-        { error: 'Name and email are required' },
-        { status: 400 }
-      );
-    }
+    // Connect to MongoDB
+    console.log('🔄 Profile API - Connecting to MongoDB...');
+    await connectDB();
+    console.log('✅ Profile API - MongoDB connected');
 
-    // Try MongoDB first, fall back to mock storage
-    const canUseMongoDB = await tryConnectDB();
-    const User = await tryGetUserModel();
-
-    if (canUseMongoDB && User) {
-      try {
-        const user = await User.findById(payload.userId);
-        if (!user) {
-          return NextResponse.json(
-            { error: 'User not found' },
-            { status: 404 }
-          );
-        }
-
-        // Update user data
-        user.name = updateData.name;
-        user.email = updateData.email;
-        user.profile = { ...user.profile, ...updateData.profile };
-        user.settings = { ...user.settings, ...updateData.settings };
-
-        await user.save();
-
-        return NextResponse.json({
-          success: true,
-          message: 'Profile updated successfully with MongoDB',
-          user: {
-            _id: user._id.toString(),
-            name: user.name,
-            email: user.email,
-            profile: user.profile,
-            settings: user.settings
-          }
-        });
-      } catch (dbError) {
-        console.error('MongoDB operation failed, falling back to mock storage:', dbError);
-      }
-    }
-
-    // Use mock storage (fallback)
-    const mockUsers = getAllMockUsers();
-    const userIndex = mockUsers.findIndex(u => u._id === payload.userId);
+    // Find and update user
+    console.log('🔍 Profile API - Finding and updating user...');
+    const user = await User.findById(authResult.user.userId);
     
-    if (userIndex === -1) {
+    if (!user) {
+      console.log('❌ Profile API - User not found');
       return NextResponse.json(
-        { error: 'User not found' },
+        { 
+          error: 'User not found',
+          code: 'USER_NOT_FOUND'
+        },
         { status: 404 }
       );
     }
 
-    // Update user in mock storage
-    const user = mockUsers[userIndex];
-    user.name = updateData.name;
-    user.email = updateData.email;
-    user.profile = { ...user.profile, ...updateData.profile };
-    user.settings = { ...user.settings, ...updateData.settings };
-    user.updatedAt = new Date();
+    // Update fields safely
+    if (updateData.profile) {
+      // Update profile fields
+      Object.keys(updateData.profile).forEach(key => {
+        if (updateData.profile[key] !== undefined) {
+          if (key === 'academic' || key === 'professional' || key === 'address' || key === 'socialLinks' || key === 'emergencyContact') {
+            // Handle nested objects
+            user.profile[key] = { ...user.profile[key], ...updateData.profile[key] };
+          } else {
+            user.profile[key] = updateData.profile[key];
+          }
+        }
+      });
+    }
 
-    logMockOperation('Profile Update', user.email);
+    if (updateData.preferences) {
+      // Update preferences
+      Object.keys(updateData.preferences).forEach(key => {
+        if (updateData.preferences[key] !== undefined) {
+          if (typeof updateData.preferences[key] === 'object') {
+            user.preferences[key] = { ...user.preferences[key], ...updateData.preferences[key] };
+          } else {
+            user.preferences[key] = updateData.preferences[key];
+          }
+        }
+      });
+    }
+
+    // Update name if firstName or lastName changed
+    if (user.profile.firstName && user.profile.lastName) {
+      user.name = `${user.profile.firstName} ${user.profile.lastName}`;
+    }
+
+    // Save updated user
+    const updatedUser = await user.save();
+    console.log('✅ Profile API - User updated successfully');
+
+    // Return updated profile data
+    const profileData = {
+      id: updatedUser._id.toString(),
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      emailVerified: updatedUser.emailVerified,
+      isActive: updatedUser.isActive,
+      profile: {
+        firstName: updatedUser.profile.firstName,
+        lastName: updatedUser.profile.lastName,
+        avatar: updatedUser.profile.avatar,
+        bio: updatedUser.profile.bio,
+        phone: updatedUser.profile.phone,
+        address: updatedUser.profile.address,
+        academic: updatedUser.profile.academic,
+        professional: updatedUser.profile.professional,
+        dateOfBirth: updatedUser.profile.dateOfBirth,
+        gender: updatedUser.profile.gender,
+        nationality: updatedUser.profile.nationality,
+        languages: updatedUser.profile.languages,
+        skills: updatedUser.profile.skills,
+        interests: updatedUser.profile.interests,
+        achievements: updatedUser.profile.achievements,
+        socialLinks: updatedUser.profile.socialLinks,
+        emergencyContact: updatedUser.profile.emergencyContact
+      },
+      preferences: updatedUser.preferences,
+      lastLogin: updatedUser.lastLogin,
+      lastActivity: updatedUser.lastActivity,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt
+    };
+
+    console.log('🎉 Profile API - Profile update completed successfully');
 
     return NextResponse.json({
       success: true,
-      message: 'Profile updated successfully (using fallback storage)',
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        profile: user.profile,
-        settings: user.settings
-      }
+      message: 'Profile updated successfully',
+      user: profileData
     });
 
   } catch (error) {
-    console.error('Profile update error:', error);
+    console.error('💥 Profile API - Update error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error during profile update',
+        code: 'INTERNAL_ERROR',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
-// DELETE /api/profile - Delete user profile (optional CRUD operation)
-export async function DELETE(request: NextRequest) {
-  try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Authorization token required' },
-        { status: 401 }
-      );
-    }
-
-    // Verify token
-    const payload = verifyToken(token);
-    if (!payload) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      );
-    }
-
-    // Try MongoDB first, fall back to mock storage
-    const canUseMongoDB = await tryConnectDB();
-    const User = await tryGetUserModel();
-
-    if (canUseMongoDB && User) {
-      try {
-        const user = await User.findByIdAndDelete(payload.userId);
-        if (!user) {
-          return NextResponse.json(
-            { error: 'User not found' },
-            { status: 404 }
-          );
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: 'Profile deleted successfully'
-        });
-      } catch (dbError) {
-        console.error('MongoDB operation failed, falling back to mock storage:', dbError);
-      }
-    }
-
-    // Use mock storage (fallback)
-    const mockUsers = getAllMockUsers();
-    const userIndex = mockUsers.findIndex(u => u._id === payload.userId);
-    
-    if (userIndex === -1) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    const user = mockUsers[userIndex];
-    mockUsers.splice(userIndex, 1);
-
-    logMockOperation('Profile Delete', user.email);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Profile deleted successfully (using fallback storage)'
-    });
-
-  } catch (error) {
-    console.error('Profile delete error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-} 
+ 
