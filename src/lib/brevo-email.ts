@@ -131,7 +131,7 @@ export class BrevoEmailService {
               </div>` : ''}
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${config.app.url}/dashboard" class="cta-button">View in Dashboard</a>
+                <a href="https://study-buddy-nirma.vercel.app/" class="cta-button">View in Dashboard</a>
               </div>
               
               <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 15px; margin: 20px 0;">
@@ -169,7 +169,7 @@ ${assignment.instructions}
 ${assignment.estimatedHours ? `Estimated Hours: ${assignment.estimatedHours} hours\n` : ''}
 ${assignment.allowLateSubmission ? `Late Submission: Allowed (${assignment.latePenalty}% penalty per day)\n` : ''}
 
-View in Dashboard: ${config.app.url}/dashboard
+View in Dashboard: https://study-buddy-nirma.vercel.app/
 
 ---
 Nirma StudyBuddy Portal

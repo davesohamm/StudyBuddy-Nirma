@@ -5,7 +5,11 @@ export default function Footer() {
         <div className="text-center">
           <p className="text-sm text-gray-600">
             Vibecoded with ❤️ by{' '}
-            <span className="font-medium text-primary-600">davesohamm</span>
+            <span className="font-medium text-primary-600">
+              <a href="https://www.linkedin.com/in/davesohamm" target="_blank" rel="noopener noreferrer">
+                davesohamm
+              </a>
+            </span>
           </p>
         </div>
       </div>

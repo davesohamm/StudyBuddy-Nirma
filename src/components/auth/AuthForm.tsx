@@ -541,7 +541,7 @@ export default function AuthForm() {
           transition={{ delay: 0.5 }}
           className="text-center text-sm text-gray-500"
         >
-          <p>© 2024 Nirma StudyBuddy Portal. All rights reserved.</p>
+          <p>© 2025 Nirma StudyBuddy Portal. All rights reserved.</p>
           <p className="mt-1">MTech Data Science Program</p>
         </motion.div>
       </motion.div>
