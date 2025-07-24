@@ -9,6 +9,10 @@ import {
 } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import { User } from '@/models/User';
+import { config } from '@/lib/config';
+
+// Force dynamic route
+export const dynamic = 'force-dynamic';
 
 // Helper function to get client IP and User Agent
 function getClientInfo(request: NextRequest) {

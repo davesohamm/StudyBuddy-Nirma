@@ -33,8 +33,8 @@ export const config = {
   
   // Security Configuration
   security: {
-    bcrypt: {
-      saltRounds: 12
+  bcrypt: {
+    saltRounds: 12
     },
     rateLimiting: {
       auth: {
@@ -60,5 +60,31 @@ export const config = {
     email: {
       domains: ['nirma.edu', 'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'] // Add more as needed
     }
+  },
+
+  // Email Configuration (Brevo - formerly Sendinblue)
+  email: {
+    brevo: {
+      apiKey: process.env.BREVO_API_KEY || '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',
+      fromEmail: 'davesohamm1@outlook.com', // Must match your Brevo account email
+      fromName: 'Nirma StudyBuddy Portal',
+      replyTo: 'davesohamm1@outlook.com'
+    },
+    templates: {
+      assignment: {
+        subject: '📚 New Assignment: {{title}}',
+        templateId: null // We'll use custom HTML instead of templates
+      },
+      reminder: {
+        subject: '⏰ Assignment Due Tomorrow: {{title}}',
+        templateId: null
+      }
+    }
+  },
+
+  // Admin Configuration
+  admin: {
+    defaultAdminEmail: 'davesohamm@gmail.com',
+    defaultAdminPassword: 'Thor@123' // Only for initial setup
   }
 }; 

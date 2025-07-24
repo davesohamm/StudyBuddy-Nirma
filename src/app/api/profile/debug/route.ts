@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/auth';
-import { connectDB } from '@/lib/mongodb';
-import { User } from '@/models/User';
+import { authenticateRequest } from '../../../../lib/auth';
+import { connectDB } from '../../../../lib/mongodb';
+import { User } from '../../../../models/User';
+
+// Force dynamic route
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {

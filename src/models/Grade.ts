@@ -1,9 +1,9 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IGrade extends Document {
   _id: string;
-  studentId: string;
-  courseId: string;
+  studentId: Types.ObjectId;
+  courseId: Types.ObjectId;
   semester: number;
   academicYear: string; // e.g., "2024-25"
   assessments: Array<{
@@ -30,12 +30,12 @@ export interface IGrade extends Document {
 
 export interface ISemesterGPA extends Document {
   _id: string;
-  studentId: string;
+  studentId: Types.ObjectId;
   semester: number;
   academicYear: string;
   courses: Array<{
-    courseId: string;
-    gradeId: string;
+    courseId: Types.ObjectId;
+    gradeId: Types.ObjectId;
     credits: number;
     gradePoints: number;
   }>;

@@ -174,7 +174,7 @@ export function verifyToken(token: string): JWTPayload | null {
     } else if (error instanceof jwt.JsonWebTokenError) {
       console.warn('Invalid token');
     } else {
-      console.error('Token verification failed:', error);
+    console.error('Token verification failed:', error);
     }
     return null;
   }
@@ -325,8 +325,8 @@ export function generatePasswordResetToken(): { token: string; expires: Date } {
  */
 export function generateEmailVerificationToken(): string {
   return generateSecureToken();
-}
-
+  }
+  
 /**
  * Validate session and check if user should be forced to re-authenticate
  */

@@ -11,8 +11,8 @@ export interface ICourse extends Document {
   
   // Academic Information
   academic: {
-    semester: number;
-    department: string;
+  semester: number;
+  department: string;
     program: string;
     prerequisites?: string[];
     corequisites?: string[];
@@ -24,11 +24,11 @@ export interface ICourse extends Document {
   faculty: {
     primary: {
       id: string;
-      name: string;
+    name: string;
       email: string;
-      phone?: string;
+    phone?: string;
       officeLocation?: string;
-    };
+  };
     secondary?: {
       id: string;
       name: string;
@@ -55,7 +55,7 @@ export interface ICourse extends Document {
       day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
       startTime: string;
       endTime: string;
-      location: string;
+    location: string;
     }[];
   };
   
@@ -185,23 +185,23 @@ const CourseSchema = new Schema<ICourse>({
   },
   
   academic: {
-    semester: {
-      type: Number,
-      required: [true, 'Semester is required'],
+  semester: {
+    type: Number,
+    required: [true, 'Semester is required'],
       min: 1,
       max: 4,
       index: true
-    },
-    department: {
-      type: String,
-      required: [true, 'Department is required'],
+  },
+  department: {
+    type: String,
+    required: [true, 'Department is required'],
       index: true
     },
     program: {
       type: String,
       required: [true, 'Program is required'],
       default: 'MTech Data Science'
-    },
+  },
     prerequisites: [String],
     corequisites: [String],
     maxStudents: {
@@ -223,18 +223,18 @@ const CourseSchema = new Schema<ICourse>({
         required: [true, 'Primary faculty ID is required'],
         ref: 'User'
       },
-      name: {
-        type: String,
+    name: {
+      type: String,
         required: [true, 'Primary faculty name is required']
-      },
+    },
       email: {
         type: String,
         required: [true, 'Primary faculty email is required'],
         match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email']
       },
-      phone: String,
+    phone: String,
       officeLocation: String
-    },
+  },
     secondary: [{
       id: {
         type: String,
@@ -264,7 +264,7 @@ const CourseSchema = new Schema<ICourse>({
     }],
     labs: [{
       day: {
-        type: String,
+      type: String,
         enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
       },
       startTime: String,
@@ -278,7 +278,7 @@ const CourseSchema = new Schema<ICourse>({
       },
       startTime: String,
       endTime: String,
-      location: String
+    location: String
     }]
   },
   
@@ -344,11 +344,11 @@ const CourseSchema = new Schema<ICourse>({
         required: true
       },
       weightage: {
-        type: Number,
+      type: Number,
         required: true,
-        min: 0,
-        max: 100
-      },
+      min: 0,
+      max: 100
+    },
       description: String,
       dueDate: Date
     }],
@@ -366,7 +366,7 @@ const CourseSchema = new Schema<ICourse>({
         required: true
       },
       points: {
-        type: Number,
+      type: Number,
         required: true
       }
     }]

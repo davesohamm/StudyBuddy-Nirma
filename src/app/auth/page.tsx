@@ -6,8 +6,7 @@ import AuthForm from '@/components/auth/AuthForm';
 import { useAuth } from '@/context/AuthContext';
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const { isAuthenticated, login, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
@@ -23,15 +22,6 @@ export default function AuthPage() {
     }
   }, [isAuthenticated, router, mounted, isLoading]);
 
-  const handleAuth = (userData: any) => {
-    login(userData);
-    router.push('/');
-  };
-
-  const handleModeChange = (newMode: 'login' | 'register') => {
-    setMode(newMode);
-  };
-
   // Show loading while mounting or checking auth
   if (!mounted || isLoading) {
     return (
@@ -46,11 +36,5 @@ export default function AuthPage() {
     return null;
   }
 
-  return (
-    <AuthForm
-      mode={mode}
-      onModeChange={handleModeChange}
-      onAuth={handleAuth}
-    />
-  );
+  return <AuthForm />;
 } 

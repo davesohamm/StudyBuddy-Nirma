@@ -29,23 +29,23 @@ export interface IUser extends Document {
     phone?: string;
     address?: {
       street?: string;
-      city?: string;
-      state?: string;
-      country?: string;
-      zipCode?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    zipCode?: string;
     };
     
     // Academic Information (for students)
     academic?: {
       studentId?: string;
       enrollmentNumber?: string;
-      program?: string;
-      department?: string;
+    program?: string;
+    department?: string;
       semester?: number;
       batch?: string;
-      enrollmentYear?: number;
+    enrollmentYear?: number;
       expectedGraduation?: Date;
-      cgpa?: number;
+    cgpa?: number;
       currentCourses?: string[];
     };
     
@@ -89,7 +89,7 @@ export interface IUser extends Document {
       email?: string;
     };
   };
-  
+    
   // User Preferences & Settings
   preferences: {
     notifications: {
@@ -214,9 +214,9 @@ const UserSchema = new Schema<IUser>({
     },
     address: {
       street: String,
-      city: String,
-      state: String,
-      country: String,
+    city: String,
+    state: String,
+    country: String,
       zipCode: String
     },
     
@@ -228,27 +228,27 @@ const UserSchema = new Schema<IUser>({
         index: true
       },
       enrollmentNumber: String,
-      program: {
-        type: String,
-        default: 'MTech Data Science'
-      },
-      department: {
-        type: String,
-        default: 'Computer Science'
-      },
+    program: {
+      type: String,
+      default: 'MTech Data Science'
+    },
+    department: {
+      type: String,
+      default: 'Computer Science'
+    },
       semester: {
         type: Number,
         min: 1,
         max: 4
       },
       batch: String,
-      enrollmentYear: Number,
+    enrollmentYear: Number,
       expectedGraduation: Date,
-      cgpa: {
-        type: Number,
-        min: 0,
-        max: 10
-      },
+    cgpa: {
+      type: Number,
+      min: 0,
+      max: 10
+    },
       currentCourses: [String]
     },
     
@@ -298,8 +298,8 @@ const UserSchema = new Schema<IUser>({
       phone: String,
       email: String
     }
-  },
-  
+    },
+    
   // User Preferences & Settings
   preferences: {
     notifications: {
@@ -370,10 +370,11 @@ const UserSchema = new Schema<IUser>({
   toJSON: {
     virtuals: true,
     transform: function(doc, ret) {
-      delete ret.password;
-      delete ret.emailVerificationToken;
-      delete ret.passwordResetToken;
-      delete ret.__v;
+      const obj = ret as any;
+      delete obj.password;
+      delete obj.emailVerificationToken;
+      delete obj.passwordResetToken;
+      delete obj.__v;
       return ret;
     }
   }

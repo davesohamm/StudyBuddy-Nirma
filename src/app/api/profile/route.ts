@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/auth';
-import { connectDB } from '@/lib/mongodb';
-import { User } from '@/models/User';
+import { authenticateRequest } from '../../../lib/auth';
+import { connectDB } from '../../../lib/mongodb';
+import { User } from '../../../models/User';
+
+// Force dynamic route
+export const dynamic = 'force-dynamic';
 
 // GET /api/profile - Get user profile
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Profile API - Starting profile fetch...');
-
+    
     // Authenticate request
     const authResult = authenticateRequest(request);
     if (!authResult.success || !authResult.user) {
@@ -103,7 +106,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     console.log('🔄 Profile API - Starting profile update...');
-
+    
     // Authenticate request
     const authResult = authenticateRequest(request);
     if (!authResult.success || !authResult.user) {
@@ -169,7 +172,7 @@ export async function PUT(request: NextRequest) {
           }
         }
       });
-    }
+}
 
     // Update name if firstName or lastName changed
     if (user.profile.firstName && user.profile.lastName) {
@@ -233,6 +236,6 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+} 
 
  

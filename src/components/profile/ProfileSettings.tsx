@@ -84,7 +84,7 @@ export default function ProfileSettings() {
         console.log('📄 ProfileSettings - Actual profile data:', data.user);
         
         if (validateProfileData(data.user)) {
-          setProfileData(data.user);
+        setProfileData(data.user);
           setErrors([]); // Clear any previous errors
           console.log('✅ ProfileSettings - Profile data set successfully');
         } else {
@@ -763,7 +763,7 @@ export default function ProfileSettings() {
               onClick={() => router.push('/')}
               className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
               title="Go to dashboard"
-            >
+              >
               <Home className="w-5 h-5" />
               </button>
           </div>

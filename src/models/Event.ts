@@ -1,12 +1,12 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IEvent extends Document {
   _id: string;
   title: string;
   description: string;
   type: 'exam' | 'assignment' | 'project' | 'seminar' | 'workshop' | 'holiday' | 'other';
-  courseId?: string;
-  organizerId: string;
+  courseId?: Types.ObjectId;
+  organizerId: Types.ObjectId;
   startDate: Date;
   endDate?: Date;
   location?: string;
@@ -15,7 +15,7 @@ export interface IEvent extends Document {
     enabled: boolean;
     time: number; // minutes before event
   };
-  participants: string[]; // Array of user IDs
+  participants: Types.ObjectId[]; // Array of user ObjectIDs
   priority: 'low' | 'medium' | 'high';
   isActive: boolean;
   createdAt: Date;

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
 import Dashboard from '@/components/dashboard/Dashboard';
 import Footer from '@/components/ui/Footer';
+import EmailAnnouncementBanner from '@/components/ui/EmailAnnouncementBanner';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Home() {
@@ -52,6 +53,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <EmailAnnouncementBanner />
       <Header />
       <main className="flex-1">
         <Dashboard />

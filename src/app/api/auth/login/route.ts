@@ -8,6 +8,9 @@ import {
 import connectDB from '@/lib/mongodb';
 import { User } from '@/models/User';
 
+// Force dynamic route
+export const dynamic = 'force-dynamic';
+
 // Helper function to get client IP and User Agent
 function getClientInfo(request: NextRequest) {
   const ipAddress = request.headers.get('x-forwarded-for') || 

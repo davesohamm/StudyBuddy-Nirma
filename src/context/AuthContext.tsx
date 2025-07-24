@@ -6,7 +6,10 @@ interface User {
   id: string;
   name: string;
   email: string;
+  role?: 'student' | 'faculty' | 'admin';
   profile?: {
+    firstName?: string;
+    lastName?: string;
     studentId?: string;
     semester?: number;
     program?: string;

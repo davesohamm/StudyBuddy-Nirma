@@ -1,11 +1,11 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export interface IStudyMaterial extends Document {
   _id: string;
   title: string;
   description: string;
-  courseId: string;
-  uploadedBy: string;
+  courseId: Types.ObjectId;
+  uploadedBy: Types.ObjectId;
   type: 'lecture_notes' | 'assignment' | 'reference' | 'video' | 'book' | 'paper' | 'other';
   category: string; // e.g., "Week 1", "Midterm Prep", "Project Resources"
   files: Array<{

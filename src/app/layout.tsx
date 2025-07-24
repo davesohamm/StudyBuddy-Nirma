@@ -1,13 +1,20 @@
-'use client';
-
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
-import { AuthProvider } from '@/context/AuthContext'
+import { AuthProvider } from '../context/AuthContext'
 
-// export const metadata: Metadata = {
-//   title: 'Nirma StudyBuddy Portal',
-//   description: 'Study Buddy Portal for MTech Data Science at Nirma University',
-// }
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'StudyBuddy - Nirma University Portal',
+  description: 'MTech Data Science Study Portal for Nirma University Students',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#4f46e5',
+}
 
 export default function RootLayout({
   children,
@@ -16,11 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <title>Nirma StudyBuddy Portal</title>
-        <meta name="description" content="Study Buddy Portal for MTech Data Science at Nirma University" />
-      </head>
-      <body>
+      <body className={inter.className}>
         <AuthProvider>
           {children}
         </AuthProvider>
