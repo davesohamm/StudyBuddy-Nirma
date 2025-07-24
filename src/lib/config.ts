@@ -1,9 +1,8 @@
 // Configuration settings for the application
 export const config = {
-  // MongoDB Connection - Updated connection string
   mongodb: {
-    uri: process.env.MONGODB_URI || 'mongodb+srv://davesohamm:<db_password>@cluster0.egfl0bg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
-    dbName: 'nirma-studybuddy-v2',
+    uri: process.env.MONGODB_URI,
+    dbName: process.env.MONGODB_DBNAME || 'nirma-studybuddy-v2',
     collections: {
       users: 'users',
       courses: 'courses',
@@ -18,7 +17,7 @@ export const config = {
   
   // JWT Configuration - Enhanced security
   jwt: {
-    secret: process.env.JWT_SECRET || 'nirma_studybuddy_jwt_secret_2024_v2_ultra_secure_key',
+    secret: process.env.JWT_SECRET,
     expiresIn: '30d', // 30 days for better UX
     refreshExpiresIn: '90d' // 90 days for refresh tokens
   },
@@ -65,26 +64,20 @@ export const config = {
   // Email Configuration (Brevo - formerly Sendinblue)
   email: {
     brevo: {
-      apiKey: process.env.BREVO_API_KEY || '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',
-      fromEmail: 'davesohamm1@outlook.com', // Must match your Brevo account email
-      fromName: 'Nirma StudyBuddy Portal',
-      replyTo: 'davesohamm1@outlook.com'
+      apiKey: process.env.BREVO_API_KEY,
+      fromEmail: process.env.BREVO_FROM_EMAIL,
+      fromName: process.env.BREVO_FROM_NAME,
+      replyTo: process.env.BREVO_REPLY_TO
     },
     templates: {
-      assignment: {
-        subject: '📚 New Assignment: {{title}}',
-        templateId: null // We'll use custom HTML instead of templates
-      },
-      reminder: {
-        subject: '⏰ Assignment Due Tomorrow: {{title}}',
-        templateId: null
-      }
+      assignment: { subject: 'New Assignment Notification', templateId: null },
+      reminder: { subject: 'Assignment Reminder', templateId: null }
     }
   },
 
   // Admin Configuration
   admin: {
-    defaultAdminEmail: 'davesohamm@gmail.com',
-    defaultAdminPassword: 'Thor@123' // Only for initial setup
+    defaultAdminEmail: process.env.DEFAULT_ADMIN_EMAIL,
+    defaultAdminPassword: process.env.DEFAULT_ADMIN_PASSWORD
   }
 }; 

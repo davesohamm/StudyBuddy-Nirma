@@ -55,13 +55,17 @@ export function generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string 
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
   const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
 
+  const jwtSecret = config.jwt.secret;
+  if (!jwtSecret) {
+    throw new Error('JWT_SECRET is not set in environment variables');
+  }
   const signature = crypto
-    .createHmac('sha256', config.jwt.secret)
+    .createHmac('sha256', jwtSecret)
     .update(`${encodedHeader}.${encodedPayload}`)
     .digest('base64')
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
-    .replace(/=/g, '');
+    .replace(/=+$/, '');
 
   return `${encodedHeader}.${encodedPayload}.${signature}`;
 }
@@ -79,8 +83,12 @@ export function verifyToken(token: string): JWTPayload | null {
     const [encodedHeader, encodedPayload, signature] = parts;
 
     // Verify signature
+    const jwtSecret = config.jwt.secret;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET is not set in environment variables');
+    }
     const expectedSignature = crypto
-      .createHmac('sha256', config.jwt.secret)
+      .createHmac('sha256', jwtSecret)
       .update(`${encodedHeader}.${encodedPayload}`)
       .digest('base64')
       .replace(/\+/g, '-')

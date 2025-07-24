@@ -19,11 +19,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Check Brevo account info
+    const apiKey = config.email.brevo.apiKey;
+    if (!apiKey) {
+      throw new Error('BREVO_API_KEY is not set in environment variables');
+    }
     const response = await fetch('https://api.brevo.com/v3/account', {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'api-key': config.email.brevo.apiKey
+        'api-key': apiKey
       }
     });
 

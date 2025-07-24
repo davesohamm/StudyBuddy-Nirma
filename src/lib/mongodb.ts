@@ -8,7 +8,7 @@ declare global {
 const MONGODB_URI = config.mongodb.uri;
 
 if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+  throw new Error('MONGODB_URI is not set in environment variables');
 }
 
 let cached = global.mongoose;
@@ -37,7 +37,7 @@ export async function connectDB() {
       environment: config.app.environment
     });
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
       console.log('✅ MongoDB connected successfully');
       return mongoose;
     });

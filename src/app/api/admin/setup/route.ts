@@ -23,7 +23,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash the admin password
-    const hashedPassword = await hashPassword(config.admin.defaultAdminPassword);
+    const adminPassword = config.admin.defaultAdminPassword;
+    if (!adminPassword) {
+      throw new Error('DEFAULT_ADMIN_PASSWORD is not set in environment variables');
+    }
+    const hashedPassword = await hashPassword(adminPassword);
 
     // Create admin user with comprehensive profile
     const adminUser = new User({
@@ -133,7 +137,11 @@ export async function GET(request: NextRequest) {
 
     if (!adminUser) {
       // Auto-create admin user
-      const hashedPassword = await hashPassword(config.admin.defaultAdminPassword);
+      const adminPassword = config.admin.defaultAdminPassword;
+      if (!adminPassword) {
+        throw new Error('DEFAULT_ADMIN_PASSWORD is not set in environment variables');
+      }
+      const hashedPassword = await hashPassword(adminPassword);
 
       adminUser = new User({
         name: 'Dave Soham',

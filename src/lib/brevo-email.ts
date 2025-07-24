@@ -205,12 +205,16 @@ This is an automated notification. Please do not reply to this email.
         tags: ['assignment-notification']
       };
 
+      const apiKey = config.email.brevo.apiKey;
+      if (!apiKey) {
+        throw new Error('BREVO_API_KEY is not set in environment variables');
+      }
       const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'api-key': config.email.brevo.apiKey
+          'api-key': apiKey
         },
         body: JSON.stringify(emailData)
       });

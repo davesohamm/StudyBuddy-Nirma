@@ -159,15 +159,18 @@ export function generateRefreshToken(userId: string, sessionId: string): string 
  */
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    const decoded = jwt.verify(token, config.jwt.secret) as JWTPayload;
-    
-    // Additional validation
-    if (!decoded.userId || !decoded.email || !decoded.role) {
-      console.warn('Invalid token payload structure');
+    const decoded = jwt.verify(token, config.jwt.secret!);
+
+    if (
+      typeof decoded !== 'object' ||
+      decoded === null ||
+      !('userId' in decoded) ||
+      !('email' in decoded) ||
+      !('role' in decoded)
+    ) {
       return null;
     }
-
-    return decoded;
+    return decoded as JWTPayload;
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
       console.warn('Token expired');
@@ -185,13 +188,21 @@ export function verifyToken(token: string): JWTPayload | null {
  */
 export function verifyRefreshToken(token: string): RefreshTokenPayload | null {
   try {
-    const decoded = jwt.verify(token, config.jwt.secret) as RefreshTokenPayload;
-    
-    if (decoded.type !== 'refresh' || !decoded.userId || !decoded.sessionId) {
+    const jwtSecret = config.jwt.secret;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET is not set in environment variables');
+    }
+    const decoded = jwt.verify(token, jwtSecret);
+    if (
+      typeof decoded !== 'object' ||
+      decoded === null ||
+      (decoded as any).type !== 'refresh' ||
+      !('userId' in decoded) ||
+      !('sessionId' in decoded)
+    ) {
       return null;
     }
-
-    return decoded;
+    return decoded as RefreshTokenPayload;
   } catch (error) {
     console.error('Refresh token verification failed:', error);
     return null;
