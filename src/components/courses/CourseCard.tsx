@@ -1,7 +1,7 @@
 'use client';
 
 import { Course } from '@/types';
-import { BookOpen, Clock, MapPin, User } from 'lucide-react';
+import { BookOpen, MapPin, User } from 'lucide-react';
 import Link from 'next/link';
 
 interface CourseCardProps {
@@ -18,18 +18,7 @@ export default function CourseCard({ course }: CourseCardProps) {
     }
   };
 
-  const getNextClass = () => {
-    if (!course.schedule?.sessions.length) return null;
-    
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const today = new Date().getDay();
-    
-    // Find next session (simplified logic)
-    const nextSession = course.schedule.sessions[0];
-    return nextSession;
-  };
 
-  const nextClass = getNextClass();
 
   return (
     <div className="card hover:shadow-md transition-shadow duration-200 cursor-pointer">
@@ -60,31 +49,26 @@ export default function CourseCard({ course }: CourseCardProps) {
         </div>
       )}
 
-      {nextClass && (
-        <div className="flex items-center gap-4 text-sm text-gray-600">
-          <div className="flex items-center gap-1">
-            <Clock className="h-4 w-4" />
-            <span>{nextClass.day} {nextClass.startTime}</span>
-          </div>
-          {nextClass.room && (
-            <div className="flex items-center gap-1">
-              <MapPin className="h-4 w-4" />
-              <span>{nextClass.room}</span>
-            </div>
-          )}
+      {course.schedule?.sessions?.[0]?.room && (
+        <div className="flex items-center gap-1 text-sm text-gray-600">
+          <MapPin className="h-4 w-4" />
+          <span>{course.schedule.sessions[0].room}</span>
         </div>
       )}
 
       <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
         <Link 
           href={`/course/${course.id}`}
-          className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+          className="btn-secondary text-sm"
         >
-          View Details
+          Course Details
         </Link>
-        <button className="btn-secondary text-sm">
+        <Link 
+          href="/study-materials"
+          className="btn-secondary text-sm"
+        >
           Study Materials
-        </button>
+        </Link>
       </div>
     </div>
   );

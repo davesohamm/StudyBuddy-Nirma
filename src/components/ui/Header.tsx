@@ -18,11 +18,39 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+interface Assignment {
+  id: string;
+  title: string;
+  subject: string;
+  faculty: string;
+  dueDate: string;
+  marks: number;
+  instructions: string;
+  priority: 'low' | 'medium' | 'high';
+  status: string;
+  tags: string[];
+  estimatedHours?: number;
+  submissionType: 'individual' | 'group';
+  groupSize?: number;
+  allowLateSubmission: boolean;
+  latePenalty?: number;
+  createdAt: string;
+  createdBy: {
+    name: string;
+    email: string;
+  };
+  daysRemaining: number;
+  isOverdue: boolean;
+  formattedDueDate: string;
+}
+
 export default function Header() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [assignmentCount, setAssignmentCount] = useState(0);
+  const [overdueCount, setOverdueCount] = useState(0);
 
   const handleLogout = () => {
     logout();
@@ -57,6 +85,36 @@ export default function Header() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Fetch assignment count
+  useEffect(() => {
+    const fetchAssignmentCount = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch('/api/assignments', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            const assignments = data.data.assignments || [];
+            setAssignmentCount(assignments.length);
+            setOverdueCount(assignments.filter((a: Assignment) => a.isOverdue).length);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching assignment count:', error);
+      }
+    };
+
+    fetchAssignmentCount();
   }, []);
 
   return (
@@ -114,12 +172,20 @@ export default function Header() {
             </Link>
 
             {/* Notifications */}
-            <button className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors relative">
+            <Link
+              href="/notifications"
+              className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors relative"
+              title="Assignment Notifications"
+            >
               <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                3
-              </span>
-            </button>
+              {assignmentCount > 0 && (
+                <span className={`absolute -top-1 -right-1 h-4 w-4 text-white text-xs rounded-full flex items-center justify-center ${
+                  overdueCount > 0 ? 'bg-red-500' : 'bg-blue-500'
+                }`}>
+                  {overdueCount > 0 ? overdueCount : assignmentCount}
+                </span>
+              )}
+            </Link>
 
             {/* Admin Dashboard Link (only for admin users) */}
             {user?.role === 'admin' && (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { semester1Courses } from '@/data/courses';
 import CourseCard from '@/components/courses/CourseCard';
@@ -135,11 +136,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Courses Section */}
         <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6">
             <h2 className="text-xl font-bold text-gray-900">Semester I Courses</h2>
-            <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-              View All
-            </button>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -157,73 +155,22 @@ export default function Dashboard() {
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Links</h3>
             <div className="space-y-2">
-              <motion.button 
-                onClick={() => setIsChatOpen(true)}
-                className="w-full text-left text-sm text-blue-600 hover:text-blue-700 font-medium bg-gradient-to-r from-blue-50 to-purple-50 p-3 rounded-xl transition-all hover:shadow-md border border-blue-100 flex items-center gap-3 group"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-1.5 rounded-lg group-hover:scale-110 transition-transform">
-                  <Bot className="w-4 h-4 text-white" />
-                </div>
-                <span className="flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
-                  AI Study Assistant
-                </span>
-              </motion.button>
-              <a href="#" className="block text-sm text-primary-600 hover:text-primary-700">
-                📚 Study Resources
+              <a href="https://chat.whatsapp.com/DDM9f5hpRgV2LsUPw5Wvjj?mode=ac_t" target="_blank" rel="noopener noreferrer" className="block text-sm text-primary-600 hover:text-primary-700">
+                💬 Class WhatsApp Group
               </a>
-              <a href="#" className="block text-sm text-primary-600 hover:text-primary-700">
+              <Link href="/academic-calendar" className="block text-sm text-primary-600 hover:text-primary-700">
                 📅 Academic Calendar
-              </a>
-              <a href="#" className="block text-sm text-primary-600 hover:text-primary-700">
-                👥 Study Groups
-              </a>
-              <a href="#" className="block text-sm text-primary-600 hover:text-primary-700">
-                📊 Grade Tracker
-              </a>
-              <a href="#" className="block text-sm text-primary-600 hover:text-primary-700">
-                💬 Discussion Forums
-              </a>
+              </Link>
+              <Link href="/study-materials" className="block text-sm text-primary-600 hover:text-primary-700">
+                📚 Study Resources
+              </Link>
+              <Link href="/timetable" className="block text-sm text-primary-600 hover:text-primary-700">
+                📅 Class Timetable
+              </Link>
             </div>
           </div>
 
-          {/* Upcoming Events */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Events</h3>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="bg-red-100 text-red-600 text-xs font-medium px-2 py-1 rounded">
-                  DUE
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">ML Assignment 1</p>
-                  <p className="text-xs text-gray-500">Tomorrow, 11:59 PM</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <div className="bg-blue-100 text-blue-600 text-xs font-medium px-2 py-1 rounded">
-                  EXAM
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Statistics Quiz</p>
-                  <p className="text-xs text-gray-500">Friday, 2:00 PM</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <div className="bg-green-100 text-green-600 text-xs font-medium px-2 py-1 rounded">
-                  LAB
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Big Data Lab Session</p>
-                  <p className="text-xs text-gray-500">Monday, 2:00 PM</p>
-                </div>
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
 
